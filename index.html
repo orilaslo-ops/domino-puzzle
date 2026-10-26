@@ -243,7 +243,6 @@
   <div class="controls">
     <button type="button" id="undoBtn">בטל</button>
     <button type="button" id="resetBtn">התחל מחדש</button>
-    <button type="button" id="colorsBtn" class="primary wide" aria-pressed="false">הצג צבעים</button>
     <button type="button" id="bonusBtn" class="secondary wide" hidden>מצב בונוס: הסר שתי משבצות בצבעים שונים</button>
   </div>
 </main>
@@ -266,7 +265,6 @@
     subtitle: document.getElementById("subtitle"),
     undo: document.getElementById("undoBtn"),
     reset: document.getElementById("resetBtn"),
-    colors: document.getElementById("colorsBtn"),
     bonus: document.getElementById("bonusBtn"),
   };
 
@@ -275,7 +273,7 @@
     occupied: new Map(), // cell key -> domino id
     dominoes: [],        // stack: {id, a:[r,c], b:[r,c], el}
     selected: null,
-    colorsOn: false,
+    colorsOn: document.documentElement.dataset.mode === "colors", // set per page, no toggle
     bonus: false,
     nextId: 1,
   };
@@ -404,8 +402,6 @@
     els.undo.disabled = state.dominoes.length === 0;
 
     app.classList.toggle("colors-on", state.colorsOn);
-    els.colors.textContent = state.colorsOn ? "הסתר צבעים" : "הצג צבעים";
-    els.colors.setAttribute("aria-pressed", String(state.colorsOn));
     els.bonus.hidden = !state.colorsOn;
     els.bonus.textContent = state.bonus
       ? "חזרה ללוח המקורי"
@@ -450,10 +446,6 @@
   });
   els.reset.addEventListener("click", () => {
     clearDominoes();
-    render();
-  });
-  els.colors.addEventListener("click", () => {
-    state.colorsOn = !state.colorsOn;
     render();
   });
   els.bonus.addEventListener("click", () => {

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl" data-mode="colors">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>לכסות את הלוח</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0B1F3A;
+    --blue: #1E5AA8;
+    --sky: #5AB0EA;
+    --bg: #F2F6FC;
+    --dark-cell: #2A63B0;
+    --light-cell: #E3ECF8;
+    --mono-cell: #C9DBF2;
+    --tile: #0B1F3A;
+    --tile-edge: #9CC9F0;
+    --gap: clamp(3px, 1vw, 6px);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--navy);
+    font-family: "Assistant", system-ui, sans-serif;
+    font-size: 18px;
+    line-height: 1.5;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+  main {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 20px 16px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  h1 {
+    font-family: "Frank Ruhl Libre", serif;
+    font-weight: 900;
+    font-size: clamp(2rem, 8vw, 2.6rem);
+    line-height: 1.1;
+    margin: 0;
+    color: var(--navy);
+    text-align: center;
+  }
+  .subtitle {
+    margin: 0;
+    text-align: center;
+    color: var(--blue);
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+  .status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+  }
+  .counter {
+    font-size: 1.15rem;
+    font-weight: 700;
+    background: #fff;
+    border: 1px solid var(--tile-edge);
+    border-radius: 999px;
+    padding: 4px 18px;
+  }
+  .counter b { color: var(--blue); font-variant-numeric: tabular-nums; }
+  .color-counts {
+    display: flex;
+    gap: 16px;
+    font-weight: 600;
+    font-size: 1rem;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height .4s ease, opacity .4s ease;
+  }
+  .colors-on .color-counts { max-height: 40px; opacity: 1; }
+  .swatch {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border-radius: 4px;
+    vertical-align: -2px;
+    margin-inline-end: 6px;
+    border: 1px solid var(--navy);
+  }
+  .swatch.dark { background: var(--dark-cell); }
+  .swatch.light { background: var(--light-cell); }
+  .color-counts b { font-variant-numeric: tabular-nums; }
+
+  .board {
+    direction: ltr; /* keep visual geometry: removed corners are top-left & bottom-right */
+    width: min(100%, 480px);
+    aspect-ratio: 1;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    gap: var(--gap);
+    padding: var(--gap);
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(11, 31, 58, .12);
+  }
+  .cell {
+    appearance: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    border-radius: 6px;
+    background: var(--mono-cell);
+    cursor: pointer;
+    font: inherit;
+    transition: background-color .5s ease, box-shadow .15s ease, transform .15s ease;
+    transition-delay: var(--delay, 0ms), 0ms, 0ms;
+  }
+  .colors-on .cell.dark { background: var(--dark-cell); }
+  .colors-on .cell.light { background: var(--light-cell); }
+  .cell.selected {
+    box-shadow: inset 0 0 0 4px var(--sky), 0 0 0 2px var(--navy);
+    transform: scale(.94);
+    z-index: 1;
+  }
+  .cell:focus-visible, .domino:focus-visible, button:focus-visible {
+    outline: 3px solid var(--sky);
+    outline-offset: 2px;
+  }
+  .cell.removed {
+    background: transparent !important;
+    cursor: default;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 2px rgba(11, 31, 58, .08);
+    background-image: repeating-linear-gradient(45deg, transparent 0 6px, rgba(11,31,58,.06) 6px 8px) !important;
+  }
+  .domino {
+    appearance: none;
+    position: relative;
+    z-index: 2;
+    margin: 2px;
+    padding: 0;
+    border: 2px solid var(--tile-edge);
+    border-radius: 10px;
+    background: var(--tile);
+    cursor: pointer;
+    box-shadow: 0 3px 6px rgba(11, 31, 58, .3);
+    animation: drop .18s ease-out;
+  }
+  .domino::after {
+    content: "";
+    position: absolute;
+    background: var(--tile-edge);
+    border-radius: 2px;
+  }
+  .domino.h::after { top: 18%; bottom: 18%; left: calc(50% - 1px); width: 2px; }
+  .domino.v::after { left: 18%; right: 18%; top: calc(50% - 1px); height: 2px; }
+  @keyframes drop {
+    from { transform: scale(.85); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .message {
+    min-height: 2.6em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+  }
+  .message span {
+    padding: 8px 18px;
+    border-radius: 12px;
+    font-weight: 600;
+    animation: fade .5s ease;
+  }
+  .message .stuck { background: #fff; color: var(--blue); border: 1px solid var(--tile-edge); }
+  .message .success { background: var(--navy); color: #fff; font-size: 1.1rem; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: min(100%, 480px);
+  }
+  .controls button {
+    min-height: 50px;
+    font: inherit;
+    font-weight: 700;
+    font-size: 1.05rem;
+    border-radius: 12px;
+    cursor: pointer;
+    padding: 8px 12px;
+    border: 2px solid var(--blue);
+    background: #fff;
+    color: var(--blue);
+    transition: background-color .2s, color .2s;
+  }
+  .controls button:active { transform: translateY(1px); }
+  .controls button:disabled { opacity: .45; cursor: default; }
+  .controls .primary { background: var(--blue); color: #fff; }
+  .controls .wide { grid-column: 1 / -1; }
+  .controls .secondary {
+    border-style: dashed;
+    border-color: var(--sky);
+    color: var(--navy);
+    background: transparent;
+    font-weight: 600;
+  }
+  .controls [hidden] { display: none; }
+  @media (hover: hover) {
+    .cell:not(.removed):hover { filter: brightness(.95); }
+    .controls button:not(:disabled):hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<main id="app">
+  <h1>לכסות את הלוח</h1>
+  <p class="subtitle" id="subtitle">האם אפשר לכסות את כל 34 המשבצות ב-17 אבני דומינו?</p>
+
+  <div class="status">
+    <div class="counter" aria-live="polite">הונחו <b id="placed">0</b> מתוך <b id="total">17</b> אבנים</div>
+    <div class="color-counts" id="colorCounts" aria-live="polite">
+      <span><i class="swatch dark" aria-hidden="true"></i>כהות פנויות: <b id="darkFree">0</b></span>
+      <span><i class="swatch light" aria-hidden="true"></i>בהירות פנויות: <b id="lightFree">0</b></span>
+    </div>
+  </div>
+
+  <div class="board" id="board" role="group" aria-label="לוח 6 על 6"></div>
+
+  <div class="message" id="message" aria-live="polite"></div>
+
+  <div class="controls">
+    <button type="button" id="undoBtn">בטל</button>
+    <button type="button" id="resetBtn">התחל מחדש</button>
+    <button type="button" id="bonusBtn" class="secondary wide" hidden>מצב בונוס: הסר שתי משבצות בצבעים שונים</button>
+  </div>
+</main>
+
+<script>
+(() => {
+  const N = 6;
+  const CORNERS = [[0, 0], [N - 1, N - 1]]; // visual top-left & bottom-right
+  const key = (r, c) => r * N + c;
+  const isDark = (r, c) => (r + c) % 2 === 0;
+
+  const app = document.getElementById("app");
+  const board = document.getElementById("board");
+  const els = {
+    placed: document.getElementById("placed"),
+    total: document.getElementById("total"),
+    darkFree: document.getElementById("darkFree"),
+    lightFree: document.getElementById("lightFree"),
+    message: document.getElementById("message"),
+    subtitle: document.getElementById("subtitle"),
+    undo: document.getElementById("undoBtn"),
+    reset: document.getElementById("resetBtn"),
+    bonus: document.getElementById("bonusBtn"),
+  };
+
+  const state = {
+    removed: new Set(),
+    occupied: new Map(), // cell key -> domino id
+    dominoes: [],        // stack: {id, a:[r,c], b:[r,c], el}
+    selected: null,
+    colorsOn: document.documentElement.dataset.mode === "colors", // set per page, no toggle
+    bonus: false,
+    nextId: 1,
+  };
+
+  const cellEls = [];
+
+  function buildBoard() {
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "cell " + (isDark(r, c) ? "dark" : "light");
+        b.style.gridRow = r + 1;
+        b.style.gridColumn = c + 1;
+        b.style.setProperty("--delay", (r + c) * 35 + "ms");
+        b.addEventListener("click", () => onCell(r, c));
+        board.appendChild(b);
+        cellEls[key(r, c)] = b;
+      }
+    }
+  }
+
+  function cellLabel(r, c) {
+    const base = `משבצת בשורה ${r + 1}, עמודה ${c + 1}`;
+    const color = state.colorsOn ? (isDark(r, c) ? ", כהה" : ", בהירה") : "";
+    if (state.occupied.has(key(r, c))) return base + color + ", מכוסה";
+    if (state.selected && state.selected[0] === r && state.selected[1] === c) return base + color + ", נבחרה";
+    return base + color + ", פנויה";
+  }
+
+  function isFree(r, c) {
+    return r >= 0 && c >= 0 && r < N && c < N &&
+      !state.removed.has(key(r, c)) && !state.occupied.has(key(r, c));
+  }
+
+  function onCell(r, c) {
+    if (!isFree(r, c)) return;
+    const s = state.selected;
+    if (s && s[0] === r && s[1] === c) { state.selected = null; render(); return; }
+    if (s && Math.abs(s[0] - r) + Math.abs(s[1] - c) === 1) {
+      place(s, [r, c]);
+      state.selected = null;
+    } else {
+      state.selected = [r, c];
+    }
+    render();
+  }
+
+  function place(a, b) {
+    const id = state.nextId++;
+    const el = document.createElement("button");
+    el.type = "button";
+    const horizontal = a[0] === b[0];
+    el.className = "domino " + (horizontal ? "h" : "v");
+    el.style.gridRow = `${Math.min(a[0], b[0]) + 1} / span ${horizontal ? 1 : 2}`;
+    el.style.gridColumn = `${Math.min(a[1], b[1]) + 1} / span ${horizontal ? 2 : 1}`;
+    el.setAttribute("aria-label", `אבן דומינו על שורה ${a[0] + 1} עמודה ${a[1] + 1} ושורה ${b[0] + 1} עמודה ${b[1] + 1}. לחצו להסרה`);
+    el.addEventListener("click", () => removeDomino(id));
+    board.appendChild(el);
+    const d = { id, a, b, el };
+    state.dominoes.push(d);
+    state.occupied.set(key(...a), id);
+    state.occupied.set(key(...b), id);
+  }
+
+  function removeDomino(id) {
+    const i = state.dominoes.findIndex(d => d.id === id);
+    if (i < 0) return;
+    const [d] = state.dominoes.splice(i, 1);
+    d.el.remove();
+    state.occupied.delete(key(...d.a));
+    state.occupied.delete(key(...d.b));
+    state.selected = null;
+    render();
+  }
+
+  function clearDominoes() {
+    state.dominoes.forEach(d => d.el.remove());
+    state.dominoes = [];
+    state.occupied.clear();
+    state.selected = null;
+  }
+
+  function setRemoved(cells) {
+    state.removed = new Set(cells.map(([r, c]) => key(r, c)));
+  }
+
+  function hasMove() {
+    for (let r = 0; r < N; r++)
+      for (let c = 0; c < N; c++)
+        if (isFree(r, c) && (isFree(r, c + 1) || isFree(r + 1, c))) return true;
+    return false;
+  }
+
+  function render() {
+    const totalCells = N * N - state.removed.size;
+    const target = totalCells / 2;
+    let darkFree = 0, lightFree = 0;
+
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const k = key(r, c);
+        const el = cellEls[k];
+        const removed = state.removed.has(k);
+        el.classList.toggle("removed", removed);
+        el.disabled = removed;
+        if (removed) {
+          el.setAttribute("aria-hidden", "true");
+          el.tabIndex = -1;
+          continue;
+        }
+        el.removeAttribute("aria-hidden");
+        el.tabIndex = state.occupied.has(k) ? -1 : 0;
+        const sel = state.selected && state.selected[0] === r && state.selected[1] === c;
+        el.classList.toggle("selected", !!sel);
+        el.setAttribute("aria-pressed", sel ? "true" : "false");
+        el.setAttribute("aria-label", cellLabel(r, c));
+        if (!state.occupied.has(k)) isDark(r, c) ? darkFree++ : lightFree++;
+      }
+    }
+
+    els.placed.textContent = state.dominoes.length;
+    els.total.textContent = target;
+    els.darkFree.textContent = darkFree;
+    els.lightFree.textContent = lightFree;
+    els.undo.disabled = state.dominoes.length === 0;
+
+    app.classList.toggle("colors-on", state.colorsOn);
+    els.bonus.hidden = !state.colorsOn;
+    els.bonus.textContent = state.bonus
+      ? "חזרה ללוח המקורי"
+      : "מצב בונוס: הסר שתי משבצות בצבעים שונים";
+
+    let msg = "";
+    if (state.dominoes.length === target) {
+      msg = '<span class="success">🎉 כל הכבוד! כיסיתם את כל הלוח!</span>';
+    } else if (!hasMove()) {
+      msg = '<span class="stuck">נתקעתם? נסו שוב 🙂</span>';
+    }
+    if (els.message.dataset.msg !== msg) {
+      els.message.innerHTML = msg;
+      els.message.dataset.msg = msg;
+    }
+  }
+
+  function startOriginal() {
+    state.bonus = false;
+    clearDominoes();
+    setRemoved(CORNERS);
+    els.subtitle.textContent = "האם אפשר לכסות את כל 34 המשבצות ב-17 אבני דומינו?";
+    render();
+  }
+
+  function startBonus() {
+    state.bonus = true;
+    clearDominoes();
+    const dark = [], light = [];
+    for (let r = 0; r < N; r++)
+      for (let c = 0; c < N; c++)
+        (isDark(r, c) ? dark : light).push([r, c]);
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    setRemoved([pick(dark), pick(light)]);
+    els.subtitle.textContent = "מצב בונוס: הוסרו משבצת כהה ומשבצת בהירה. נסו לכסות את כל 34 המשבצות!";
+    render();
+  }
+
+  els.undo.addEventListener("click", () => {
+    const last = state.dominoes[state.dominoes.length - 1];
+    if (last) removeDomino(last.id);
+  });
+  els.reset.addEventListener("click", () => {
+    clearDominoes();
+    render();
+  });
+  els.bonus.addEventListener("click", () => {
+    state.bonus ? startOriginal() : startBonus();
+  });
+
+  buildBoard();
+  startOriginal();
+})();
+</script>
+</body>
+</html>
